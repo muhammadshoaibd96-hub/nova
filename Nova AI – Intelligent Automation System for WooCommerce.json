@@ -1,0 +1,389 @@
+{
+  "name": "Nova AI – Intelligent Automation System for WooCommerce",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {
+          "loadPreviousSession": "memory",
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1376,
+        144
+      ],
+      "id": "09933592-ad5f-454f-90b3-93b1bc4f631d",
+      "name": "When chat message received",
+      "webhookId": "4c1cfaf5-6c1c-4e4c-8d9b-7ff4a4624eb1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=Role & Purpose: \nNova is a highly precise shopping assistant. Its primary function is to **ensure accurate, complete, and immediate creation of WooCommerce orders** after confirmation. It prioritizes data integrity and the correct sequential use of tools.\n\nCapabilities (Focus on Data & Logic):\n- Data Retrieval: Accurately retrieve product and pricing details.\n- Order Payload Construction: **Strictly adhere to the required WooCommerce API structure** for order creation, including the line_items array.\n- Sequential Logic: Always follow the mandatory steps for order finalization (Search → Confirm → Create).\n\n** Tools **\n\nSearch Product Information – Used to locate specifications, pricing, and the **mandatory WooCommerce `product_id` (or `variation_id`)** for any item the customer intends to buy.\nCustom FAQs – Used for general store/policy questions.\nCreate Order – Used ONLY to submit a fully validated order payload to WooCommerce.\n\nThe `Create Order` Tool Requirements:\n- Input Data: The agent must pass a **single, complete JSON object** that contains the following mandatory keys and structures:\n    1.  `billing`: Customer name, email, phone, and billing address.\n    2.  `shipping`: Shipping address (use billing if the same).\n    3.  `payment_method`: Confirmed payment method (e.g., \"bacs,\" \"cod\").\n    4.  **`line_items`**: **A non-empty array** containing objects for each product being purchased.\n        - **Product Object Structure:** `{ \"product_id\": [NUMBER], \"quantity\": [NUMBER] }`\n- Output: Confirm all final details (product name, price, quantity, total) before submission.\n\nInteraction Style: \n- Polished, friendly, and professional. Use structured, icon-rich responses.\n- Be **direct and firm** when collecting missing mandatory data (e.g., \"I still need your street address to proceed with the order.\").\n\nNotes (The Operational Mandate): \n\n1.  **Mandatory Sequence for Order Creation:**\n    - **Step 1 (Search):** **IMMEDIATELY** use the **`Search Product Information`** tool to retrieve the **`product_id`** (or `variation_id`) as soon as the customer indicates an intent to buy. Store this ID.\n    - **Step 2 (Data Collection):** Collect and confirm the **`quantity`** and all mandatory customer details (name, email, phone, billing/shipping addresses, payment method).\n    - **Step 3 (Payload Assembly):** Before calling the **`Create Order`** tool, the agent **MUST** assemble the complete order JSON payload, making sure the `line_items` array is correctly structured using the retrieved `product_id` and the confirmed `quantity`.\n    - **CRITICAL RULE:** **NEVER** call `Create Order` if the `line_items` array is empty or if the product objects are missing the `product_id`.\n\n2.  **Data Integrity:** The agent **MUST** use the official price and name fetched from the **`Search Product Information`** tool when confirming the order summary.\n3.  **Efficiency:** Re-use saved customer information whenever possible, but always confirm it.",
+          "maxIterations": 5,
+          "enableStreaming": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -944,
+        160
+      ],
+      "id": "fc35d495-0cee-4f06-97f3-448e1f2fc3a8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 5,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wooCommerceTool",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        400
+      ],
+      "id": "00b957fc-5133-40d0-a1ea-d35074f9a28e",
+      "name": "Search Product Information",
+      "credentials": {
+        "wooCommerceApi": {
+          "id": "dCDnOIxoYVXm0amN",
+          "name": "WooCommerce account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -960,
+        400
+      ],
+      "id": "eac0c01b-cbfc-4547-9c49-7f0b68f83ab0",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "WVxUNLMyU1CmRiF4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Upload Documents ",
+        "formDescription": "Upload Documents For Custom Faqs Database",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "File",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -1328,
+        -64
+      ],
+      "id": "7daf81f3-3709-423d-9071-500c56511f1f",
+      "name": "Documents Loaded",
+      "webhookId": "67ca3108-846d-4081-8472-74c997f7aac2"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {
+          "queryName": "match_documents"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -864,
+        -80
+      ],
+      "id": "131c6ccb-76c9-4d5d-a284-b047e264cfbd",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "smgsWfBNgZP5D5ac",
+          "name": "Supabase account New"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -256,
+        -64
+      ],
+      "id": "cf6c3939-1477-4e61-ade8-dc612b1346e9",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -192,
+        160
+      ],
+      "id": "eafb8661-8a6d-4eb1-a3fe-750e051acdd3",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "WVxUNLMyU1CmRiF4",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this to retrieve information related to FAQs.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "topK": 2,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -544,
+        176
+      ],
+      "id": "6e2c4a12-be27-4d16-b10d-2e20f5a1701c",
+      "name": "Custom Faqs",
+      "credentials": {
+        "supabaseApi": {
+          "id": "smgsWfBNgZP5D5ac",
+          "name": "Supabase account New"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -1152,
+        368
+      ],
+      "id": "3dcd1ba6-3ff2-4682-9e10-70c66b6c35fd",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "4cJyWZ1Qt8ObY46j",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "order",
+        "additionalFields": {
+          "currency": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Currency', ``, 'string') }}"
+        },
+        "billingUi": {
+          "billingValues": {
+            "firstName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('First_Name', ``, 'string') }}",
+            "lastName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Last_Name', ``, 'string') }}",
+            "company": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Company', ``, 'string') }}",
+            "address_1": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Address_Line_1', ``, 'string') }}",
+            "address_2": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Address_Line_2', ``, 'string') }}",
+            "city": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('City', ``, 'string') }}",
+            "postcode": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Postal_Code', ``, 'string') }}",
+            "country": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Country', ``, 'string') }}",
+            "email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Email', ``, 'string') }}",
+            "phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Phone', ``, 'string') }}"
+          }
+        },
+        "shippingUi": {
+          "shippingValues": {
+            "firstName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('First_Name', ``, 'string') }}",
+            "lastName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Last_Name', ``, 'string') }}",
+            "company": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Company', ``, 'string') }}",
+            "address_1": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Address_Line_1', ``, 'string') }}",
+            "address_2": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Address_Line_2', ``, 'string') }}",
+            "city": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('City', ``, 'string') }}",
+            "postcode": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Postal_Code', ``, 'string') }}",
+            "country": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Country', ``, 'string') }}"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.wooCommerceTool",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        400
+      ],
+      "id": "0b81c4d3-a47b-4be2-9c29-39a3742fed43",
+      "name": "Create Order",
+      "credentials": {
+        "wooCommerceApi": {
+          "id": "dCDnOIxoYVXm0amN",
+          "name": "WooCommerce account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Product Information": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Documents Loaded": {
+      "main": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Custom Faqs",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Custom Faqs": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "When chat message received",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Order": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6a7ed850-8d60-43e6-b2cd-292e3b0c6d9c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "62b8b1cf87b3b081dcf117c1af0d5e7a66c113a29c32e97e3f92134309ca0d07"
+  },
+  "id": "kYgmPWIDVB8mK5J6",
+  "tags": []
+}
